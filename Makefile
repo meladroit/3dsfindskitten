@@ -31,6 +31,10 @@ BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
+APP_TITLE       :=  3dsfindskitten
+APP_DESCRIPTION :=  a zen simulation for the 3DS
+APP_AUTHOR      :=  meladroit/willidleaway
+ICON            :=  logo.png
 
 #---------------------------------------------------------------------------------
 # options for code generation
