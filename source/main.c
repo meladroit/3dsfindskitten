@@ -18,6 +18,9 @@
 #define ROBOT 0
 #define KITTEN 1
 
+#define HELD_THRESHOLD 5
+#define REPEAT_THRESHOLD 42
+
 enum colour
 {
     BLACK,    RED,      GREEN,    BROWN,    INDIGO,   PURPLE,   TEAL,     GREY,
@@ -222,7 +225,17 @@ int main()
     int old_x, old_y;
     int counter = 0;
     int input_result = 0;
-    int game_in_progress = 0;
+    int game_in_progress = 0;/*
+    int heldU = 0;
+    int heldD = 0;
+    int heldL = 0;
+    int heldR = 0;
+    int heldU_timer_active = 0;
+    int heldD_timer_active = 0;
+    int heldL_timer_active = 0;
+    int heldR_timer_active = 0;*/
+    u32 kDown;
+    //u32 kUp, kHeld;
     char line[MAX_LW];
     FILE *f;
     
@@ -240,7 +253,7 @@ int main()
     consoleSetWindow(&bottomBar,0,0,BOTTOM_WIDTH,2);
     consoleSetWindow(&bottomScr,0,2,BOTTOM_WIDTH,HEIGHT-2);
 
-    srand(time(0));
+    srand(time(NULL));
     f = fopen("nki","r");
     // and now count how many lines are supplied in the nki file
     while(!(feof(f)))
@@ -259,9 +272,11 @@ int main()
         gspWaitForVBlank();
         hidScanInput();
 
-        // Your code goes here
-
-        u32 kDown = hidKeysDown();
+        kDown = hidKeysDown();
+        //kHeld = hidKeysHeld();
+        //kUp = hidKeysHeld();
+        if (kDown & KEY_START)
+            break; // break in order to return to hbmenu
         if (kDown && !game_in_progress) {
             game_in_progress = 1;
             consoleSelect(&bottomScr);
@@ -280,8 +295,6 @@ int main()
             }
         }
         else {
-            if (kDown & KEY_START)
-                break; // break in order to return to hbmenu
             if (kDown & KEY_SELECT)
             {
                 game_in_progress = 0;
@@ -292,19 +305,123 @@ int main()
             if (kDown & KEY_UP)
             {
                 input_result = process_input(dUP);
-            }
+                //heldU = 0;
+            }/*
+            else if (kHeld & KEY_UP)
+            {
+                heldU++;
+                if (heldU_timer_active)
+                {
+                    if (heldU > HELD_THRESHOLD)
+                    {
+                        input_result = process_input(dUP);
+                        heldU = 0;
+                    }
+                }
+                else
+                {
+                    if (heldU > REPEAT_THRESHOLD)
+                    {
+                        heldU_timer_active = 1;
+                        input_result = process_input(dUP);
+                        heldU = 0;
+                    }
+                }
+            }*/
             if (kDown & KEY_DOWN)
             {
                 input_result = process_input(dDOWN);
-            }
+                //heldD = 0;
+            }/*
+            else if (kHeld & KEY_DOWN)
+            {
+                heldD++;
+                if (heldD_timer_active)
+                {
+                    if (heldD > HELD_THRESHOLD)
+                    {
+                        input_result = process_input(dDOWN);
+                        heldD = 0;
+                    }
+                }
+                else
+                {
+                    if (heldD > REPEAT_THRESHOLD)
+                    {
+                        heldD_timer_active = 1;
+                        input_result = process_input(dDOWN);
+                        heldD = 0;
+                    }
+                }
+            }*/
             if (kDown & KEY_LEFT)
             {
                 input_result = process_input(dLEFT);
-            }
+                //heldL = 0;
+            }/*
+            else if (kHeld & KEY_LEFT)
+            {
+                heldL++;
+                if (heldL_timer_active)
+                {
+                    if (heldL > HELD_THRESHOLD)
+                    {
+                        input_result = process_input(dLEFT);
+                        heldL = 0;
+                    }
+                }
+                else
+                {
+                    if (heldL > REPEAT_THRESHOLD)
+                    {
+                        heldL_timer_active = 1;
+                        input_result = process_input(dLEFT);
+                        heldL = 0;
+                    }
+                }
+            }*/
             if (kDown & KEY_RIGHT)
             {
                 input_result = process_input(dRIGHT);
+                //heldR = 0;
+            }/*
+            else if (kHeld & KEY_RIGHT)
+            {
+                heldR++;
+                if (heldR_timer_active)
+                {
+                    if (heldR > HELD_THRESHOLD)
+                    {
+                        input_result = process_input(dRIGHT);
+                        heldR = 0;
+                    }
+                }
+                else
+                {
+                    if (heldR > REPEAT_THRESHOLD)
+                    {
+                        heldR_timer_active = 1;
+                        input_result = process_input(dRIGHT);
+                        heldR = 0;
+                    }
+                }
+            }*//*
+            if ((kUp & KEY_UP) && heldU)
+            {
+                heldU_timer_active = 0;
             }
+            if ((kUp & KEY_DOWN) && heldD)
+            {
+                heldD_timer_active = 0;
+            }
+            if ((kUp & KEY_LEFT) && heldL)
+            {
+                heldL_timer_active = 0;
+            }
+            if ((kUp & KEY_RIGHT) && heldR)
+            {
+                heldR_timer_active = 0;
+            }*/
             if (input_result)
             {
                 consoleSelect(&bottomScr);
@@ -321,9 +438,11 @@ int main()
                         printf(line);
                         break;
                 }
+                input_result = 0;
             }
             else
             {
+                consoleSelect(&topScr);
                 /* Redraw robot, where avaliable */
                 if (!(old_x == robot.x && old_y == robot.y))
                 {
