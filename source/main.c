@@ -171,7 +171,7 @@ int message_collision(int line_no)
     return 0;
 }
 
-void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomBar, PrintConsole *pbottomScr)
+void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomScr)
 {
     int counter, counter2;
     for (counter = 0; counter < TOP_WIDTH; counter++)
@@ -231,13 +231,6 @@ void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomBar, PrintConso
     gotoxy(TOP_WIDTH/2-7,HEIGHT/2);
     textcolour(NEONGREEN);
     printf("3dsfindskitten");
-    
-    consoleSelect(pbottomBar);
-    consoleClear();
-    textcolour(MAGENTA);
-    printf("\x1b[47;1m");
-    printf("3dsfindskitten v0.2         \n");
-    printf("a zen simulation for the 3DS");
     
     consoleSelect(pbottomScr);
     consoleClear();
@@ -328,7 +321,7 @@ int process_input(enum direction d)
                 textcolour(WHITE);
                 printf("You found kitten! Way to go, 3DS!\n");
                 printf("Press START to quit.\n");
-                printf("Press SELECT to restart your ceaseless, Sisyphean quest.");
+                wordwrap("Press SELECT to restart your ceaseless, Sisyphean quest.");
                 kitten_dir = 0;
                 kitten_found = 1;
                 break;
@@ -372,6 +365,16 @@ int main()
     consoleSetWindow(&bottomBar,0,0,BOTTOM_WIDTH,2);
     consoleSetWindow(&bottomScr,0,2,BOTTOM_WIDTH,HEIGHT-2);
 
+    consoleSelect(&bottomBar);
+    consoleClear();
+    textcolour(MAGENTA);
+    printf("\x1b[47;1m");
+    printf("3dsfindskitten v0.2         \n");
+    printf("a zen simulation for the 3DS");
+    gfxFlushBuffers();
+    gfxSwapBuffers();
+    gspWaitForVBlank();
+
     srand(time(NULL));
     f = fopen("nki","r");
     // and now count how many lines are supplied in the nki file
@@ -383,7 +386,7 @@ int main()
     // assume a trailing newline before EOF inflates our count by 1
     no_lines--;
     
-    game_initialise(&topScr,&bottomBar,&bottomScr);
+    game_initialise(&topScr,&bottomScr);
 
     // Main loop
     while (aptMainLoop())
@@ -418,7 +421,7 @@ int main()
             {
                 game_in_progress = 0;
                 kitten_found = 0;
-                game_initialise(&topScr,&bottomBar,&bottomScr);
+                game_initialise(&topScr,&bottomScr);
             }
         }
         else {
