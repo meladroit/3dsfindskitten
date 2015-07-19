@@ -18,8 +18,7 @@
 #define ROBOT 0
 #define KITTEN 1
 
-#define HELD_THRESHOLD 5
-#define REPEAT_THRESHOLD 42
+#define HELD_THRESHOLD 8
 
 enum colour
 {
@@ -42,14 +41,30 @@ typedef struct
 
 object robot;
 object kitten;
+int kitten_dir = 0;
+int kitten_found = 0;
 object empty;
 object nki[NUM_NKI];
 int nki_lines[NUM_NKI];
 int nki_chosen = 0;
 
 int no_lines = 0;
+FILE *f;
+char line[MAX_LW];
 
 int screen[TOP_WIDTH][HEIGHT];
+
+void sleep(int milliseconds)
+{
+    // attempts to emulate sleep in ms by assuming 60 fps
+    int i;
+    for (i = 0; i < (int)(milliseconds/16.67); i++)
+    {
+        gspWaitForVBlank();
+        gfxFlushBuffers();
+        gfxSwapBuffers();
+    }
+}
 
 void gotoxy(int x, int y)
 {
@@ -167,7 +182,9 @@ void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomBar, PrintConso
     consoleSelect(pbottomBar);
     consoleClear();
     textcolour(MAGENTA);
-    printf("3dsfindskitten\na zen simulation for the 3DS");
+    printf("\x1b[47;1m");
+    printf("3dsfindskitten v0.1         \n");
+    printf("a zen simulation for the 3DS");
     
     consoleSelect(pbottomScr);
     consoleClear();
@@ -175,17 +192,23 @@ void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomBar, PrintConso
     printf("In this game you are a 3DS (");
     draw_robot();
     textcolour(WHITE);
-    printf("). Your job is to find kitten. This task ");
-    printf("is complicated by the existence of various things which are not kitten.\n");
-    printf("3DS must touch items to determine if they are kitten or not. The game ");
-    printf("ends when 3dsfindskitten. Alternatively, you may end the game by ");
-    printf("pressing START. Press SELECT to reset.\n");
-    printf("   Press any key to start.\n");
+    printf("). Your job");
+    printf(" is to find kitten. This task is compli-");
+    printf(" cated by the existence of various      ");
+    printf(" things which are not kitten.\n");
+    printf("Your 3DS must touch items to determine  ");
+    printf(" if they are kitten or not. The game    ");
+    printf(" ends when 3dsfindskitten. Alternatively");
+    printf(" you may end the game by pressing START,");
+    printf(" or press SELECT to reset, at any time.\n");
+    textcolour(GREY);
+    printf("Press any key to start.\n");
 
 }
 
 int process_input(enum direction d)
 {
+    int counter;
     // returns 0 if no other objects encountered
     //      (which includes both out-of-bounds and successful moves)
     // otherwise, returns whatever object was encountered
@@ -213,8 +236,59 @@ int process_input(enum direction d)
     }
     if (screen[check_x][check_y] != EMPTY)
     {
+        consoleClear();
+        switch (screen[check_x][check_y])
+        {
+            case KITTEN:
+                for (counter = 0; counter <=3; counter++)
+                {
+                    gotoxy(BOTTOM_WIDTH/2-4+counter-1,HEIGHT/2-2);
+                    putchar(' ');
+                    gotoxy(BOTTOM_WIDTH/2+3-counter+1,HEIGHT/2-2);
+                    putchar(' ');
+                    gotoxy(BOTTOM_WIDTH/2-4+counter,HEIGHT/2-2);
+                    if (kitten_dir)
+                    {
+                        draw_kitten();
+                    }
+                    else
+                    {
+                        draw_robot();
+                    }
+                    gotoxy(BOTTOM_WIDTH/2+3-counter,HEIGHT/2-2);
+                    if (kitten_dir)
+                    {
+                        draw_robot();
+                    }
+                    else
+                    {
+                        draw_kitten();
+                    }
+                    sleep(600);
+                }
+                gotoxy(BOTTOM_WIDTH/2-1,HEIGHT/2-3);
+                textcolour(SALMON);
+                putchar('\3');
+                putchar('\3');
+                gotoxy(0,0);
+                sleep(1200);
+                textcolour(WHITE);
+                printf("You found kitten! Way to go, 3DS!\n");
+                printf("Press START to quit.\n");
+                printf("Press SELECT to restart your ceaseless, Sisyphean quest.");
+                kitten_dir = 0;
+                kitten_found = 1;
+                break;
+            default:
+                textcolour(nki[screen[check_x][check_y]-2].color);
+                fetch_line(f,nki_lines[screen[check_x][check_y]-2],line);
+                printf(line);
+                break;
+        }
         return screen[check_x][check_y];
     }
+    screen[check_x][check_y] = ROBOT;
+    screen[robot.x][robot.y] = EMPTY;
     robot.x = check_x;
     robot.y = check_y;
     return 0;
@@ -225,19 +299,13 @@ int main()
     int old_x, old_y;
     int counter = 0;
     int input_result = 0;
-    int game_in_progress = 0;/*
+    int game_in_progress = 0;
     int heldU = 0;
     int heldD = 0;
     int heldL = 0;
     int heldR = 0;
-    int heldU_timer_active = 0;
-    int heldD_timer_active = 0;
-    int heldL_timer_active = 0;
-    int heldR_timer_active = 0;*/
-    u32 kDown;
-    //u32 kUp, kHeld;
-    char line[MAX_LW];
-    FILE *f;
+    u32 kDown, kHeld;
+    //u32 kUp;
     
     gfxInitDefault();
     
@@ -273,7 +341,7 @@ int main()
         hidScanInput();
 
         kDown = hidKeysDown();
-        //kHeld = hidKeysHeld();
+        kHeld = hidKeysHeld();
         //kUp = hidKeysHeld();
         if (kDown & KEY_START)
             break; // break in order to return to hbmenu
@@ -294,168 +362,88 @@ int main()
                 putchar(nki[counter].character);
             }
         }
-        else {
+        else if (kitten_found) {
             if (kDown & KEY_SELECT)
             {
                 game_in_progress = 0;
+                kitten_found = 0;
                 game_initialise(&topScr,&bottomBar,&bottomScr);
             }
+        }
+        else {
+            consoleSelect(&bottomScr);
             old_x = robot.x;
             old_y = robot.y;
             if (kDown & KEY_UP)
             {
+                kitten_dir = 1;
                 input_result = process_input(dUP);
-                //heldU = 0;
-            }/*
+                heldU = 0;
+            }
             else if (kHeld & KEY_UP)
             {
                 heldU++;
-                if (heldU_timer_active)
+                if (heldU > HELD_THRESHOLD)
                 {
-                    if (heldU > HELD_THRESHOLD)
-                    {
-                        input_result = process_input(dUP);
-                        heldU = 0;
-                    }
+                    input_result = process_input(dUP);
+                    heldU = 0;
                 }
-                else
-                {
-                    if (heldU > REPEAT_THRESHOLD)
-                    {
-                        heldU_timer_active = 1;
-                        input_result = process_input(dUP);
-                        heldU = 0;
-                    }
-                }
-            }*/
-            if (kDown & KEY_DOWN)
+            }
+            if ((kDown & KEY_DOWN) && !kitten_found)
             {
+                kitten_dir = 0;
                 input_result = process_input(dDOWN);
-                //heldD = 0;
-            }/*
-            else if (kHeld & KEY_DOWN)
+                heldD = 0;
+            }
+            else if ((kHeld & KEY_DOWN) && !kitten_found)
             {
                 heldD++;
-                if (heldD_timer_active)
+                if (heldD > HELD_THRESHOLD)
                 {
-                    if (heldD > HELD_THRESHOLD)
-                    {
-                        input_result = process_input(dDOWN);
-                        heldD = 0;
-                    }
+                    input_result = process_input(dDOWN);
+                    heldD = 0;
                 }
-                else
-                {
-                    if (heldD > REPEAT_THRESHOLD)
-                    {
-                        heldD_timer_active = 1;
-                        input_result = process_input(dDOWN);
-                        heldD = 0;
-                    }
-                }
-            }*/
-            if (kDown & KEY_LEFT)
+            }
+            if ((kDown & KEY_LEFT) && !kitten_found)
             {
+                kitten_dir = 1;
                 input_result = process_input(dLEFT);
-                //heldL = 0;
-            }/*
-            else if (kHeld & KEY_LEFT)
+                heldL = 0;
+            }
+            else if ((kHeld & KEY_LEFT) && !kitten_found)
             {
                 heldL++;
-                if (heldL_timer_active)
+                if (heldL > HELD_THRESHOLD)
                 {
-                    if (heldL > HELD_THRESHOLD)
-                    {
-                        input_result = process_input(dLEFT);
-                        heldL = 0;
-                    }
+                    input_result = process_input(dLEFT);
+                    heldL = 0;
                 }
-                else
-                {
-                    if (heldL > REPEAT_THRESHOLD)
-                    {
-                        heldL_timer_active = 1;
-                        input_result = process_input(dLEFT);
-                        heldL = 0;
-                    }
-                }
-            }*/
-            if (kDown & KEY_RIGHT)
+            }
+            if ((kDown & KEY_RIGHT) && !kitten_found)
             {
+                kitten_dir = 0;
                 input_result = process_input(dRIGHT);
-                //heldR = 0;
-            }/*
-            else if (kHeld & KEY_RIGHT)
+                heldR = 0;
+            }
+            else if ((kHeld & KEY_RIGHT) && !kitten_found)
             {
                 heldR++;
-                if (heldR_timer_active)
+                if (heldR > HELD_THRESHOLD)
                 {
-                    if (heldR > HELD_THRESHOLD)
-                    {
-                        input_result = process_input(dRIGHT);
-                        heldR = 0;
-                    }
+                    input_result = process_input(dRIGHT);
+                    heldR = 0;
                 }
-                else
-                {
-                    if (heldR > REPEAT_THRESHOLD)
-                    {
-                        heldR_timer_active = 1;
-                        input_result = process_input(dRIGHT);
-                        heldR = 0;
-                    }
-                }
-            }*//*
-            if ((kUp & KEY_UP) && heldU)
-            {
-                heldU_timer_active = 0;
             }
-            if ((kUp & KEY_DOWN) && heldD)
+            consoleSelect(&topScr);
+            if (!(old_x == robot.x && old_y == robot.y))
             {
-                heldD_timer_active = 0;
-            }
-            if ((kUp & KEY_LEFT) && heldL)
-            {
-                heldL_timer_active = 0;
-            }
-            if ((kUp & KEY_RIGHT) && heldR)
-            {
-                heldR_timer_active = 0;
-            }*/
-            if (input_result)
-            {
-                consoleSelect(&bottomScr);
-                consoleClear();
-                switch (input_result)
-                {
-                    case KITTEN:
-                        textcolour(kitten.color);
-                        printf("oh look, you found kitten!");
-                        break;
-                    default:
-                        textcolour(nki[input_result-2].color);
-                        fetch_line(f,nki_lines[input_result-2],line);
-                        printf(line);
-                        break;
-                }
-                input_result = 0;
-            }
-            else
-            {
-                consoleSelect(&topScr);
-                /* Redraw robot, where avaliable */
-                if (!(old_x == robot.x && old_y == robot.y))
-                {
-                    gotoxy(old_x,old_y);
-                    putchar(' ');
-                    gotoxy(robot.x,robot.y);
-                    draw_robot();
-                    gotoxy(robot.x,robot.y);
-                    screen[old_x][old_y] = EMPTY;
-                    screen[robot.x][robot.y] = ROBOT;
-                    old_x = robot.x;
-                    old_y = robot.y;
-                }
+                gotoxy(old_x,old_y);
+                putchar(' ');
+                gotoxy(robot.x,robot.y);
+                draw_robot();
+                gotoxy(robot.x,robot.y);
+                old_x = robot.x;
+                old_y = robot.y;
             }
         }
 
