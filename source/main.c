@@ -12,6 +12,7 @@
 #define NUM_NKI      20  // number of objects not kitten
 #define TOP_WIDTH    50  // text columns
 #define BOTTOM_WIDTH 40  // text columns
+#define WIDTH        BOTTOM_WIDTH
 #define HEIGHT       30  // text rows
 
 #define EMPTY -1
@@ -46,6 +47,7 @@ int kitten_found = 0;
 object empty;
 object nki[NUM_NKI];
 int nki_lines[NUM_NKI];
+char nki_strings[NUM_NKI][MAX_LW];
 int nki_chosen = 0;
 
 int no_lines = 0;
@@ -95,6 +97,56 @@ void fetch_line(FILE *f, int line_no, char line[MAX_LW])
     {
         fgets(line,MAX_LW,f);
     }
+}
+
+int lastSpace(char *tocut)
+{
+    char *lastSpace;
+    lastSpace = strrchr(tocut,' ');
+    if(lastSpace)
+    {
+        return (int)(lastSpace-tocut);
+    } else { return -1; }
+}
+
+void wordwrap(char *towrap)
+{
+    int idx = 0;
+    int i, lastSpc;
+    char buffer[WIDTH+1] = {0};
+    do
+    {
+        strncpy(buffer,towrap+idx,WIDTH);
+        if(strlen(buffer)<WIDTH)
+        {
+            printf(buffer);
+            putchar(' ');
+            break;
+        }
+        if(towrap[idx+WIDTH]==' ')
+        {
+            printf(buffer);
+            idx = idx + WIDTH;
+        } else {
+            lastSpc = lastSpace(buffer);
+            if (lastSpc>0)
+            {
+                for(i=0;i<lastSpc;i++)
+                {
+                    putchar(buffer[i]);
+                    idx++;
+                }
+                putchar('\n');
+            } else {
+                for(i=0;i<WIDTH-1;i++)
+                {
+                    putchar(buffer[i]);
+                }
+                printf("- ");
+                idx = idx + WIDTH - 1;
+            }
+        }
+    }while (strlen(buffer)==WIDTH);
 }
 
 void draw_robot() /* Draws robot at current position */
@@ -170,6 +222,7 @@ void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomBar, PrintConso
         {
             nki_lines[counter] = rand() % no_lines;
         } while (message_collision(nki_lines[counter]));
+        fetch_line(f,nki_lines[counter],nki_strings[counter]);
         nki_chosen++;
     }
     
@@ -183,7 +236,7 @@ void game_initialise(PrintConsole *ptopScr, PrintConsole *pbottomBar, PrintConso
     consoleClear();
     textcolour(MAGENTA);
     printf("\x1b[47;1m");
-    printf("3dsfindskitten v0.1         \n");
+    printf("3dsfindskitten v0.2         \n");
     printf("a zen simulation for the 3DS");
     
     consoleSelect(pbottomScr);
@@ -281,8 +334,7 @@ int process_input(enum direction d)
                 break;
             default:
                 textcolour(nki[screen[check_x][check_y]-2].color);
-                fetch_line(f,nki_lines[screen[check_x][check_y]-2],line);
-                printf(line);
+                wordwrap(nki_strings[screen[check_x][check_y]-2]);
                 break;
         }
         return screen[check_x][check_y];
@@ -298,7 +350,6 @@ int main()
 {
     int old_x, old_y;
     int counter = 0;
-    int input_result = 0;
     int game_in_progress = 0;
     int heldU = 0;
     int heldD = 0;
@@ -377,7 +428,7 @@ int main()
             if (kDown & KEY_UP)
             {
                 kitten_dir = 1;
-                input_result = process_input(dUP);
+                process_input(dUP);
                 heldU = 0;
             }
             else if (kHeld & KEY_UP)
@@ -385,14 +436,14 @@ int main()
                 heldU++;
                 if (heldU > HELD_THRESHOLD)
                 {
-                    input_result = process_input(dUP);
+                    process_input(dUP);
                     heldU = 0;
                 }
             }
             if ((kDown & KEY_DOWN) && !kitten_found)
             {
                 kitten_dir = 0;
-                input_result = process_input(dDOWN);
+                process_input(dDOWN);
                 heldD = 0;
             }
             else if ((kHeld & KEY_DOWN) && !kitten_found)
@@ -400,14 +451,14 @@ int main()
                 heldD++;
                 if (heldD > HELD_THRESHOLD)
                 {
-                    input_result = process_input(dDOWN);
+                    process_input(dDOWN);
                     heldD = 0;
                 }
             }
             if ((kDown & KEY_LEFT) && !kitten_found)
             {
                 kitten_dir = 1;
-                input_result = process_input(dLEFT);
+                process_input(dLEFT);
                 heldL = 0;
             }
             else if ((kHeld & KEY_LEFT) && !kitten_found)
@@ -415,14 +466,14 @@ int main()
                 heldL++;
                 if (heldL > HELD_THRESHOLD)
                 {
-                    input_result = process_input(dLEFT);
+                    process_input(dLEFT);
                     heldL = 0;
                 }
             }
             if ((kDown & KEY_RIGHT) && !kitten_found)
             {
                 kitten_dir = 0;
-                input_result = process_input(dRIGHT);
+                process_input(dRIGHT);
                 heldR = 0;
             }
             else if ((kHeld & KEY_RIGHT) && !kitten_found)
@@ -430,7 +481,7 @@ int main()
                 heldR++;
                 if (heldR > HELD_THRESHOLD)
                 {
-                    input_result = process_input(dRIGHT);
+                    process_input(dRIGHT);
                     heldR = 0;
                 }
             }
